@@ -1,6 +1,7 @@
 package com.tzj.myimageloader.adapter;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +12,7 @@ import android.widget.ImageView;
 import com.tzj.myimageloader.R;
 import com.tzj.myimageloader.util.ImageLoader;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -39,11 +41,14 @@ public class ImageGridViewAdapter extends BaseAdapter {
 
     private LayoutInflater inflater;
 
+    private List<String> checkedImg;
+
     public ImageGridViewAdapter(Context context, List<String> imageNameList, String parentFilePath) {
         this.context = context;
         this.imageNameList = imageNameList;
         this.parentFilePath = parentFilePath;
         inflater = LayoutInflater.from(context);
+        checkedImg = new ArrayList<>();
     }
 
     @Override
@@ -63,27 +68,48 @@ public class ImageGridViewAdapter extends BaseAdapter {
 
     @Override
     public View getView(int position, View contentView, ViewGroup viewGroup) {
-        ViewHolder viewHolder;
+        final ViewHolder viewHolder;
         if (contentView == null) {
             contentView = inflater.inflate(R.layout.item, viewGroup, false);
             viewHolder = new ViewHolder();
             viewHolder.iv = (ImageView) contentView.findViewById(R.id.iv);
-            viewHolder.chk = (ImageButton) contentView.findViewById(R.id.chk);
+            viewHolder.iv_check = (ImageButton) contentView.findViewById(R.id.chk);
             contentView.setTag(viewHolder);
         } else {
             viewHolder = (ViewHolder) contentView.getTag();
         }
-        //先设置默认的
+        //先设置默认的,重置状态
         viewHolder.iv.setImageResource(R.mipmap.no_image);
-        viewHolder.chk.setImageResource(R.mipmap.chk_photo_normal);
+        viewHolder.iv_check.setImageResource(R.mipmap.chk_photo_normal);
+        viewHolder.iv.setColorFilter(null);
+        //图片的路径
+        final String imagePath = parentFilePath + "/" + imageNameList.get(position);
         //显示图片
-        ImageLoader.getInstance().loadImage(
-                parentFilePath + "/" + imageNameList.get(position), viewHolder.iv);
+        ImageLoader.getInstance().loadImage(imagePath, viewHolder.iv);
+        //设置图片的选中状态
+        if (checkedImg.contains(imagePath)) {
+            viewHolder.iv.setColorFilter(Color.parseColor("#77000000"));
+            viewHolder.iv_check.setImageResource(R.mipmap.chk_photo_choosed);
+        }
+        //图片选择点击事件
+        viewHolder.iv_check.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View view) {
+                if (checkedImg.contains(imagePath)) {//已被选中
+                    checkedImg.remove(imagePath);
+                    viewHolder.iv.setColorFilter(null);
+                    viewHolder.iv_check.setImageResource(R.mipmap.chk_photo_normal);
+                } else {//未被选中
+                    checkedImg.add(imagePath);
+                    viewHolder.iv.setColorFilter(Color.parseColor("#77000000"));
+                    viewHolder.iv_check.setImageResource(R.mipmap.chk_photo_choosed);
+                }
+            }
+        });
         return contentView;
     }
 
     private class ViewHolder {
         ImageView iv;
-        ImageButton chk;
+        ImageButton iv_check;
     }
 }
