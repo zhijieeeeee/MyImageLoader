@@ -51,6 +51,22 @@ public class ImageGridViewAdapter extends BaseAdapter {
         checkedImg = new ArrayList<>();
     }
 
+    /**
+     * 设置父文件夹的路径
+     *
+     * @param parentFilePath
+     */
+    public void setParentFilePath(String parentFilePath) {
+        this.parentFilePath = parentFilePath;
+    }
+
+    /**
+     * 清空选中数据
+     */
+    public void clearCheck() {
+        checkedImg.clear();
+    }
+
     @Override
     public int getCount() {
         return imageNameList.size();

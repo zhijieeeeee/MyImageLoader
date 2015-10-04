@@ -39,7 +39,7 @@ public class FolderBean {
     public void setDirPath(String dirPath) {
         this.dirPath = dirPath;
         //通过路径直接获取名称
-        int lastIndexOf = this.dirPath.lastIndexOf("/");
+        int lastIndexOf = this.dirPath.lastIndexOf("/") + 1;
         this.dirName = this.dirPath.substring(lastIndexOf);
     }
 

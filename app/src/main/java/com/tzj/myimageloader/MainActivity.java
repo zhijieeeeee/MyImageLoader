@@ -9,8 +9,10 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.MediaStore;
-import android.util.Log;
+import android.view.View;
+import android.view.WindowManager;
 import android.widget.GridView;
+import android.widget.PopupWindow;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -18,6 +20,7 @@ import android.widget.Toast;
 import com.tzj.myimageloader.adapter.ImageGridViewAdapter;
 import com.tzj.myimageloader.bean.FolderBean;
 import com.tzj.myimageloader.util.CheckSd;
+import com.tzj.myimageloader.view.FolderPopupWindow;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -27,7 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements View.OnClickListener {
 
     private GridView gv_photo;
     private RelativeLayout rl_bottom;
@@ -61,17 +64,24 @@ public class MainActivity extends Activity {
      */
     private ProgressDialog progressDialog;
 
+    /**
+     * 文件夹的Pop
+     */
+    private FolderPopupWindow folderPopupWindow;
+
     private Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             //当前文件夹下的文件名list
-            mImgList.addAll(Arrays.asList(mCurrentFile.list()));
+            mImgList.addAll(Arrays.asList(mCurrentFile.list(new FileNameFilter())));
             imageGridViewAdapter = new ImageGridViewAdapter(MainActivity.this,
                     mImgList, mCurrentFile.getAbsolutePath());
             gv_photo.setAdapter(imageGridViewAdapter);
             tv_dir_name.setText(mCurrentFile.getName());
             tv_dir_count.setText(mCount + "张");
             progressDialog.dismiss();
+            //扫描完毕，初始化pop
+            initPop();
         }
     };
 
@@ -92,7 +102,8 @@ public class MainActivity extends Activity {
         tv_dir_name = (TextView) findViewById(R.id.tv_dir_name);
         tv_dir_count = (TextView) findViewById(R.id.tv_dir_count);
         progressDialog = new ProgressDialog(MainActivity.this);
-        progressDialog.setMessage("正在加载...");
+        progressDialog.setMessage("正在扫描图片...");
+        rl_bottom.setOnClickListener(this);
     }
 
     /**
@@ -103,6 +114,63 @@ public class MainActivity extends Activity {
         folderBeanList = new ArrayList<>();
         //扫描图片
         scanImg();
+    }
+
+    /**
+     * 初始化pop
+     */
+    private void initPop() {
+        folderPopupWindow = new FolderPopupWindow(MainActivity.this, folderBeanList);
+        //pop消失监听
+        folderPopupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
+            @Override
+            public void onDismiss() {
+                lightOn();
+            }
+        });
+        //单项点击事件
+        folderPopupWindow.setOnItemClick(new FolderPopupWindow.OnItemClick() {
+            @Override
+            public void onItemClick(FolderBean folderBean) {
+                //选中的为另一个文件夹
+                if (folderBean.getDirPath() != mCurrentFile.getAbsolutePath()) {
+                    //设置当前选中的文件夹
+                    mCurrentFile = new File(folderBean.getDirPath());
+                    mImgList.clear();
+                    mImgList.addAll(Arrays.asList(mCurrentFile.list(new FileNameFilter())));
+                    imageGridViewAdapter.setParentFilePath(folderBean.getDirPath());
+                    imageGridViewAdapter.clearCheck();
+                    imageGridViewAdapter.notifyDataSetChanged();
+                    tv_dir_name.setText(mCurrentFile.getName());
+                    tv_dir_count.setText(mImgList.size() + "张");
+                    //GridView滑动到第一行
+                    gv_photo.post(new Runnable() {
+                        public void run() {
+                            gv_photo.setSelection(0);
+                        }
+                    });
+                }
+                folderPopupWindow.dismiss();
+            }
+        });
+    }
+
+    /**
+     * 外部区域变亮
+     */
+    private void lightOn() {
+        WindowManager.LayoutParams lp = getWindow().getAttributes();
+        lp.alpha = 1.0f;
+        getWindow().setAttributes(lp);
+    }
+
+    /**
+     * 外部区域变暗
+     */
+    private void lightDown() {
+        WindowManager.LayoutParams lp = getWindow().getAttributes();
+        lp.alpha = 0.3f;
+        getWindow().setAttributes(lp);
     }
 
     /**
@@ -153,17 +221,7 @@ public class MainActivity extends Activity {
                         continue;
                     }
                     //获得父文件夹下的文件的数量
-                    int fileCount = parentFile.list(new FilenameFilter() {
-                        @Override
-                        public boolean accept(File file, String fileName) {
-                            if (fileName.endsWith(".jpeg")
-                                    || fileName.endsWith(".jpg")
-                                    || fileName.endsWith(".png")) {
-                                return true;
-                            }
-                            return false;
-                        }
-                    }).length;
+                    int fileCount = parentFile.list(new FileNameFilter()).length;
                     folderBean.setCount(fileCount);
                     folderBeanList.add(folderBean);
                     //设置图片最多的文件夹为当前显示的文件夹
@@ -176,5 +234,28 @@ public class MainActivity extends Activity {
                 handler.sendEmptyMessage(111);
             }
         }.start();
+    }
+
+    //文件过滤
+    private class FileNameFilter implements FilenameFilter {
+        @Override
+        public boolean accept(File file, String fileName) {
+            if (fileName.endsWith(".jpeg")
+                    || fileName.endsWith(".jpg")
+                    || fileName.endsWith(".png")) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.rl_bottom:
+                folderPopupWindow.showAsDropDown(rl_bottom, 0, 0);
+                lightDown();
+                break;
+        }
     }
 }
